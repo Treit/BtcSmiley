@@ -39,6 +39,18 @@ int main(int argc, char **argv)
         HICON icon = DrawFace(mood);
         ICONINFO info = {0};
         assert(icon && GetIconInfo(icon, &info));
+
+        if (mood == 2) {
+            HDC dc = CreateCompatibleDC(NULL);
+            HGDIOBJ old = SelectObject(dc, info.hbmColor);
+            int size = GetSystemMetrics(SM_CXSMICON);
+            assert(GetPixel(dc, size / 2, 11 * size / 16) == RGB(0, 0, 0));
+            assert(GetPixel(dc, size / 2, 12 * size / 16) == RGB(255, 220, 0));
+            assert(GetPixel(dc, size / 2, 13 * size / 16) == RGB(255, 220, 0));
+            SelectObject(dc, old);
+            DeleteDC(dc);
+        }
+
         DeleteObject(info.hbmColor);
         DeleteObject(info.hbmMask);
         faces[mood] = icon;

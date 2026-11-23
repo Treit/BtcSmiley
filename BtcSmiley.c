@@ -177,6 +177,8 @@ static HICON DrawFace(int mood)
             mouth[i].y = 22 - mouth[i].y;
         } else if (mood == 1) {
             mouth[i].y = 11;
+        } else {
+            mouth[i].y -= (i > 0 && i < 4) ? 2 : 1;
         }
     }
 
