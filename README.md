@@ -1,12 +1,19 @@
 # BtcSmiley
 
-A tiny Bitcoin system tray app inspired by StockSmiley. Pure Win32 C,
-with no framework, downloaded icons, API key, or third-party libraries.
+A tiny Bitcoin system tray app inspired by StockSmiley. Available for
+Linux in Rust and Windows in Win32 C. Both versions draw their own icons
+and use Coinbase's public API without an API key.
 
-The yellow face starts in **Bear** mode: happy when Bitcoin falls, sad when
-it rises. Right-click the face to select **Bull** mode or exit. Hover over
-the face to see the BTC/USD price, percentage change, and selected mode.
-The mode resets to Bear when the app restarts.
+The yellow face starts in **Bear** mode and smiles when Bitcoin falls or
+frowns when it rises. Open the face's menu to select **Bull** mode, which
+reverses the reaction, or to exit. The mode resets to Bear when the app restarts.
+
+## Repository layout
+
+| Platform | Source | Tests | Build output |
+| --- | --- | --- | --- |
+| Linux (Rust) | `linux/src/` | `linux/tests/` | `linux/target/` |
+| Windows (Win32 C) | `windows/src/` | `windows/tests/` | `windows/build/` |
 
 ## Price signal
 
@@ -18,31 +25,74 @@ Changes within plus or minus 0.1% show a neutral face.
 
 The app uses the public [Coinbase product stats endpoint](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-stats).
 This is one exchange's price, not a market-wide average. Network requests
-run on a worker thread. If an update fails, the tooltip marks the last price
-as stale and the face keeps its last state. Before the first successful
-update, the face is neutral and the tooltip says the price is unavailable.
-The app retries each minute and restores its icon if Explorer restarts.
+run in the background. If an update fails, BtcSmiley marks the last price
+as stale and keeps the last mood. The face starts neutral and the status
+reads “Fetching BTC/USD…” until the first result. If that request fails,
+the status reports that the price is unavailable. The app retries each
+minute and restores its icon when the tray host restarts.
 
-## Build and run
+## Ubuntu
+
+Start at the repository root in an Ubuntu desktop terminal. Use Rust 1.89
+or later and a C linker.
+
+```sh
+sudo apt install build-essential ca-certificates
+cargo run --manifest-path linux/Cargo.toml --release --locked
+```
+
+BtcSmiley appears in the GNOME **top bar** through Ubuntu AppIndicators.
+If needed, enable the extension in the Extensions app or run
+`gnome-extensions enable ubuntu-appindicators@ubuntu.com`. If the extension is
+missing, install `gnome-shell-ubuntu-extensions` on Ubuntu 26.04 or
+`gnome-shell-extension-appindicator` on Ubuntu 24.04, then log out and back in.
+
+Click the face to see the BTC/USD quote, signed 24-hour change, and mode.
+Ubuntu AppIndicators displays these details in the menu. On tray hosts
+that support StatusNotifierItem tooltips, you can also hover over the face.
+Ubuntu Dock's sidebar is for launchers and windows. For a vertical tray,
+use a KDE Plasma side panel with its System Tray widget.
+[Ubuntu AppIndicators](https://github.com/ubuntu/gnome-shell-extension-appindicator)
+· [KDE Plasma panels](https://userbase.kde.org/Plasma/Panels)
+
+### Linux end-to-end tests
+
+The tests launch the real binary with a private D-Bus session and a local
+HTTP fixture. They drive the tray menu, inspect the rendered face data,
+and check that the icon returns when the tray host restarts.
+
+```sh
+sudo apt install dbus-daemon python3-gi
+cargo build --manifest-path linux/Cargo.toml --locked
+dbus-run-session -- /usr/bin/python3 linux/tests/tray_e2e.py linux/target/debug/btcsmiley
+```
+
+Set `BTCSMILEY_TEST_LIVE=1` before `dbus-run-session` to also test the live
+Coinbase request. The local fixture uses `BTCSMILEY_STATS_URL` and
+`BTCSMILEY_REFRESH_MS` to override the endpoint and refresh interval.
+
+## Windows
 
 Requires Windows 10 or later and either MSVC's C compiler or MinGW-w64 GCC.
 For MSVC, use a Developer PowerShell. For GCC, put `gcc` on `PATH`.
+Run these commands from the repository root.
 
 ```powershell
-.\build.ps1
-.\BtcSmiley.exe
+.\windows\build.ps1
+.\windows\build\BtcSmiley.exe
 ```
 
-The executable opens only a tray icon, not a window or console. Windows may
-place it in the hidden-icons menu; drag it onto the taskbar to keep it visible.
-There is no installer or automatic startup.
+The executable opens a tray icon. Right-click for **Bear**, **Bull**, and
+**Exit**, or hover for the BTC/USD quote, percentage change, and mode.
+Windows may place it in the hidden-icons menu. Drag it onto the taskbar
+to keep it visible.
 
 Run the focused tests, including parsing, mode inversion, neutral boundaries,
 and GDI icon creation:
 
 ```powershell
-.\build.ps1 -Test
-.\tests.exe --live
+.\windows\build.ps1 -Test
+.\windows\build\tests.exe --live
 ```
 
 The optional `--live` check also fetches a real quote and requires internet access.
