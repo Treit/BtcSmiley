@@ -1,4 +1,4 @@
-#include "BtcSmiley.c"
+#include "../src/BtcSmiley.c"
 #include <assert.h>
 
 int main(int argc, char **argv)
